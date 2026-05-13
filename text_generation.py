@@ -2,11 +2,12 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import torch.nn.functional as F
 
 
 class TransformerBloc(nn.Module):
     def __init__(self,embed_dim,number_heads):
-        super.__init__()
+        super().__init__()
         self.multiHeadAttention = nn.MultiheadAttention(embed_dim,number_heads,batch_first=True)
         self.firstLayerNormalization = nn.LayerNorm(embed_dim)
         self.mlp = nn.Sequential(
@@ -26,7 +27,7 @@ class TransformerBloc(nn.Module):
 
 class GPTMiniModel (nn.Module):
     def __init__(self,vocab_size,embed_dim,number_heads,num_layers,max_length = 100):
-        super.__init__()
+        super().__init__()
         self.token_embeddings = nn.Embedding(vocab_size,embed_dim)
         self.position_embeddings = nn.Embedding(max_length,embed_dim)
         self.blocks = nn.Sequential(*[
@@ -48,5 +49,17 @@ class GPTMiniModel (nn.Module):
 
         return logits
     
-    def generation ():
-        
+    def generation (self,input_ids,max_tokens = 10):
+        for _ in range(max_tokens):
+            logits = self(input_ids)
+            last_tokens = logits[:,-1,:]
+            probabilities = F.softmax(last_tokens,dim=1)
+            next_token = torch.argmax(probabilities,dim=1,keepdim=True)
+            input_ids = torch.cat([input_ids,next_token],dim=1)
+        return input_ids
+
+
+model = GPTMiniModel(vocab_size=20,embed_dim=8,number_heads=2,num_layers=2)
+input_ids = torch.tensor([[1,2]])
+generated = model.generation(input_ids,max_tokens=5)
+print(f"The generated is {generated} and ids is {input_ids}")
