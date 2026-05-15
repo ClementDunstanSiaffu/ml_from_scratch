@@ -55,7 +55,7 @@ class GPTmini (nn.Module):
         self.last_layer_norms = nn.LayerNorm(embed_dim)
 
         ## Set matrix for logits 
-        self.logits_table = nn.Embedding(embed_dim,vocabulary_size)
+        self.logits_table = nn.Linear(embed_dim,vocabulary_size)
 
     def forward (self,x):
 
@@ -80,9 +80,9 @@ class GPTmini (nn.Module):
         return logits 
     
 
-model = GPTmini(50000,768,32,96,50000)
+model = GPTmini(50,18,6,4,100)
 
-inputs_id = torch.randint(0,50000,(10,1000))
+inputs_id = torch.randint(0,50,(10,100))
 
 logits = model(inputs_id)
 
