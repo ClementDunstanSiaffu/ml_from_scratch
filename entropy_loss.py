@@ -53,7 +53,7 @@ class GPTmini(nn.Module):
 
 model = GPTmini(vocab_size=20,embed_dim=8,number_heads=2,num_layers=2)
 
-optimizer = optim.Adam(model.parameters(),lr=0.001)
+optimizer = optim.AdamW(model.parameters(),lr=0.001)
 
 loss_fn = nn.CrossEntropyLoss()
 

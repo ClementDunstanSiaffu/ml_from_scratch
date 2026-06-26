@@ -86,7 +86,7 @@ inputs_id = torch.randint(0,50,(10,100))
 
 logits = model(inputs_id)
 
-print(f"Checking the logit shape : {logits.shape}")
+print(f"Checking the logit shape and the logits emebddings  : {logits.shape}, {logits}")
 
 
 
