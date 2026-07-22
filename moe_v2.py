@@ -23,7 +23,7 @@ class SwiguExpertModel (nn.Module):
 
 class MoeLayer (nn.Module):
     def __init__(self,hidden_state,intermediate_state,num_experts):
-        super().__init__(self)
+        super().__init__()
         self.hidden_state = hidden_state
         self.intermediate_state = intermediate_state
         self.num_experts = num_experts
@@ -52,7 +52,7 @@ class MoeLayer (nn.Module):
 
         sorted_tokens = tokens[sort_idx]
 
-        unique_experts_ids,counts = torch.unique_consecutive(sorted_expert_ids,returns_count=True)
+        unique_experts_ids,counts = torch.unique_consecutive(sorted_expert_ids,return_counts=True)
 
         sorted_output = torch.empty_like(sorted_tokens)
 
@@ -60,7 +60,7 @@ class MoeLayer (nn.Module):
 
         for expert_id,count in zip (
             unique_experts_ids,
-            counts.toList()
+            counts.tolist()
         ):
             end = start + count
 
@@ -68,7 +68,7 @@ class MoeLayer (nn.Module):
 
             expert_outputs = self.experts[expert_id](expert_inputs)
 
-            sorted_output = expert_outputs[start:end]
+            sorted_output[start:end] = expert_outputs
 
             start = end
 
@@ -81,6 +81,35 @@ class MoeLayer (nn.Module):
         return output
 
 
+
+def main ():
+    torch.manual_seed(42)
+
+    batch_size = 2
+
+    seq_length = 4
+
+    hidden_state = 8
+
+    intermediate_size = 16
+
+    num_experts = 4
+
+    moe = MoeLayer(hidden_state,intermediate_size,num_experts=num_experts)
+
+    x = torch.randn(batch_size,seq_length,hidden_state)
+
+    print("Print the x shape:",x.shape)
+
+    output = moe(x)
+
+    print("\n print the output shape:",output.shape)
+
+    print("Output tensor:",output)
+
+
+if __name__ == "__main__":
+    main()
 
 
         
