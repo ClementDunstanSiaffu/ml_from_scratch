@@ -24,7 +24,7 @@ class MoeExpertLayer(nn.Module):
 
         self.hidden_state = hidden_state
         self.num_experts = num_experts
-        self.capacitor = capacity_factor
+        self.capacity_factor = capacity_factor
 
         self.router = nn.Linear(hidden_state,num_experts)
 
@@ -66,6 +66,102 @@ class MoeExpertLayer(nn.Module):
         router_probs = F.softmax(router_logits,dim=-1)
 
         top1_prob,experts_id = torch.max(router_probs,dim=-1)
+
+        aux_loss = self.compute_aux_loss(top1_prob,experts_id)
+
+        sorted_experts_id,sort_idx = torch.sort(experts_id)
+
+        sorted_tokens = tokens[sort_idx]
+
+        unique_expert_ids,counts = torch.unique_consecutive(sorted_experts_id,return_counts=True)
+
+        avg_tokens = (num_tokens + self.num_experts - 1)//self.num_experts
+
+        capacity = int (avg_tokens * self.capacity_factor)
+
+        sorted_ouput = torch.empty_like(sorted_tokens)
+
+        start = 0
+
+        for expert_id,count in zip(unique_expert_ids,counts.tolist()):
+
+            end = start + count
+
+            experts_input = sorted_tokens[start:end]
+
+            if (count <= capacity):
+
+                experts_output = self.experts[expert_id](experts_input)
+
+                sorted_ouput[start:end] = experts_output
+            else:
+
+                valid_inputs = experts_input[:capacity]
+
+                overflow_inputs = experts_input[capacity:]
+
+                valid_outputs = self.experts[expert_id](valid_inputs)
+
+                sorted_ouput[start:start + capacity] = valid_outputs
+
+                sorted_ouput[start + capacity:end] = overflow_inputs
+
+            start = end
+
+        output_tokens = torch.empty_like(sorted_ouput)
+
+        output_tokens[sort_idx] = sorted_ouput
+
+        output = output_tokens.view(batch_size,seq_len,hidden_state)
+
+        return output,aux_loss
+
+
+
+def main ():
+
+    torch.manual_seed(42)
+
+    hidden_state = 8
+    intermediate_state = 16
+    batch_size = 2
+    seq_length = 4
+    num_experts = 4
+
+    moe = MoeExpertLayer(
+        hidden_state=hidden_state,
+        intermediate_state=intermediate_state,
+        num_experts=num_experts,
+        capacity_factor=1.25
+    )
+
+    x = torch.randn(batch_size,seq_length,hidden_state)
+
+    output,aux_loss = moe(x)
+
+    print("Input Shape")
+
+    print(x.shape)
+
+    print()
+
+    print("Output Shape")
+
+    print(output.shape)
+
+    print()
+
+    print("Auxiliary Loss")
+
+    print(aux_loss.item())
+
+
+if (__name__ == "__main__"):
+    main()
+
+
+
+
 
 
 
