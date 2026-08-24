@@ -67,7 +67,7 @@ class MoeExpertLayer(nn.Module):
 
         top1_prob,experts_id = torch.max(router_probs,dim=-1)
 
-        aux_loss = self.compute_aux_loss(top1_prob,experts_id)
+        aux_loss = self.compute_aux_loss(router_probs,experts_id)
 
         sorted_experts_id,sort_idx = torch.sort(experts_id)
 
