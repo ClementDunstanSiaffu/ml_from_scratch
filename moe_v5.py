@@ -97,7 +97,7 @@ class MoeLayer(nn.Module):
             aux_loss
         )
 
-    def buildMetadata(self,expert_indices:torch.tensor,routing_probs:torch.tensor):
+    def buildMetadata(self,expert_indices:torch.tensor,routing_probs:torch.tensor)->RoutingMetadata:
 
         num_tokens = expert_indices.size[0]
 
@@ -129,6 +129,26 @@ class MoeLayer(nn.Module):
         sort_indices = accepted_positions[sort_order]
 
         sorted_expert_ids = accepted_expert_ids[sort_order]
+
+        if sorted_expert_ids.numel() > 0 :
+            unique_expert,expert_counts = torch.unique_consecutive(sorted_expert_ids,return_counts=True)
+        else:
+            unique_expert = torch.empty(0,device=torch.long,device=expert_indices.device)
+            expert_counts = torch.empty(0,dtype=torch.long,device=expert_indices.device)
+
+        original_positions = sort_indices.clone()
+
+        return RoutingMetadata(
+            expert_indices=expert_indices,
+            routing_probs=routing_probs,
+            accepted_mask=accepted_mask,
+            overflow_mask=overflow_mask,
+            sorted_index=sort_indices,
+            sorted_expert_ids=sorted_expert_ids,
+            unique_experts=unique_expert,
+            expert_counts=expert_counts,
+            original_positions=original_positions
+        )
 
 
 
