@@ -97,7 +97,49 @@ class MoeLayer(nn.Module):
             aux_loss
         )
 
+    def buildMetadata(self,expert_indices:torch.tensor,routing_probs:torch.tensor):
 
+        num_tokens = expert_indices.size[0]
+
+        expert_capacity = int(num_tokens * self.capacity_factor)/self.num_experts
+
+        expert_capacity = max(expert_capacity,1)
+
+        token_positions = torch.zeros_like(expert_indices)
+
+        for expert_id in range(self.num_experts):
+
+            expert_mask = expert_indices == expert_id
+
+            positions = torch.cumsum(expert_mask.long(),dim=0) - 1
+
+            token_positions = torch.where(expert_mask,positions,token_positions)
+
+
+        accepted_mask = token_positions < expert_capacity
+
+        overflow_mask = ~accepted_mask
+
+        accepted_positions = torch.nonzero(accepted_mask,as_tuple=False).unsqueeze(-1)
+
+        accepted_expert_ids = expert_indices[accepted_positions]
+
+        sort_order = torch.argsort(accepted_expert_ids)
+
+        sort_indices = accepted_positions[sort_order]
+
+        sorted_expert_ids = accepted_expert_ids[sort_order]
+
+
+
+
+
+
+
+
+
+
+         
 
 
 
