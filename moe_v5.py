@@ -105,8 +105,12 @@ class MoeLayer(nn.Module):
 
         expert_capacity = max(expert_capacity,1)
 
+        # This hold the spot on the expert. Example in the Expert0 (0,1,2) means this token will take this position (slot) in the expert
         token_positions = torch.zeros_like(expert_indices)
 
+        # This loops help to get token_positions which define spot on the Expert
+        # The aim of the token_positions will be used to get the accepted mask as token position as it provide the slot for those token on the specific expert
+        # So for example the slot goes to 5 but maximum capacity is 4 so the slot 5 for the expert will be overflow so for the token which occupy that slot will overflow  
         for expert_id in range(self.num_experts):
 
             expert_mask = expert_indices == expert_id
@@ -115,17 +119,26 @@ class MoeLayer(nn.Module):
 
             token_positions = torch.where(expert_mask,positions,token_positions)
 
-
+        # Get all the accepted mask which return array of boolean [True,True] for those accepted token spot (slot) for that expert
         accepted_mask = token_positions < expert_capacity
 
+        # All negation of the accepted mask becomes overflow_mask 
         overflow_mask = ~accepted_mask
 
+        # It returns index of all accepted mask it inputs [True,True] => [0,1]
+        # The aim of the accepted positions as since it returns index of the accepted condition using accepted mask which accumulated positions are accepted so we can use their indices from the general expert_indices to get accepted expert ids 
         accepted_positions = torch.nonzero(accepted_mask,as_tuple=False).unsqueeze(-1)
 
+        # Now we need to get using the accepted positions and that is the reason why we needed accepted_positions
+        # Now we have all the accepted expert ids 
         accepted_expert_ids = expert_indices[accepted_positions]
 
+        # Now we need to sort by this sort it sorts using the index. Example from the accepted experts id we got [0,0,1,2,0] then => it will be [0,1,4,2,3]
+        # As it takes index of the order 
+        # Why we need sort order ? because it will be used to get sort indices and sorted expert id so it provide one sorting for sort indices and sorted expert id 
         sort_order = torch.argsort(accepted_expert_ids)
 
+        # As the accepted_positions contains all accepted experts ids in order means [0,1,2,3,4] without know which is the slot for the which expert or which is from this expert 
         sort_indices = accepted_positions[sort_order]
 
         sorted_expert_ids = accepted_expert_ids[sort_order]
