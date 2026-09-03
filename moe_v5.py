@@ -170,6 +170,31 @@ class MoeLayer(nn.Module):
             original_positions=original_positions
         )
 
+    def dispatch(self,tokens:torch.tensor,metadata:RoutingMetadata):
+        return tokens[metadata.sorted_indices]
+
+    def execute_experts (self,dispatched_token:torch.tensor,metadata:RoutingMetadata):
+
+        start = 0
+
+        output  = torch.empty_like(dispatched_token)
+
+        for expert_id,count in zip (metadata.unique_experts.tolist(),metadata.expert_counts.tolist()):
+            end = start + count
+
+            expert_tokens = dispatched_token[start:end]
+
+            expert_output = self.experts[expert_id](expert_tokens)
+
+            output[start:end] = expert_output
+
+            start = end
+
+        return output
+
+
+
+
 
 
 
