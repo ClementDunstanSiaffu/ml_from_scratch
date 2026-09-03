@@ -127,20 +127,27 @@ class MoeLayer(nn.Module):
 
         # It returns index of all accepted mask it inputs [True,True] => [0,1]
         # The aim of the accepted positions as since it returns index of the accepted condition using accepted mask which accumulated positions are accepted so we can use their indices from the general expert_indices to get accepted expert ids 
+        # [1,2,3,4,5]
         accepted_positions = torch.nonzero(accepted_mask,as_tuple=False).unsqueeze(-1)
 
         # Now we need to get using the accepted positions and that is the reason why we needed accepted_positions
         # Now we have all the accepted expert ids 
+        # Let say we got this [0,0,1,2,0]
         accepted_expert_ids = expert_indices[accepted_positions]
 
         # Now we need to sort by this sort it sorts using the index. Example from the accepted experts id we got [0,0,1,2,0] then => it will be [0,1,4,2,3]
         # As it takes index of the order 
         # Why we need sort order ? because it will be used to get sort indices and sorted expert id so it provide one sorting for sort indices and sorted expert id 
+        # Let say we got this [0,1,4,2,3]
         sort_order = torch.argsort(accepted_expert_ids)
 
         # As the accepted_positions contains all accepted experts ids in order means [0,1,2,3,4] without know which is the slot for the which expert or which is from this expert 
+        # Using sort order from accepted position we get [1,2,4,2,3]
+        # This will help to get tokens embeddings for the specific expert 
         sort_indices = accepted_positions[sort_order]
 
+        #[0,0,0,1,2]
+        # This will help to get expert id and counts on how many times did experts occur 
         sorted_expert_ids = accepted_expert_ids[sort_order]
 
         if sorted_expert_ids.numel() > 0 :
