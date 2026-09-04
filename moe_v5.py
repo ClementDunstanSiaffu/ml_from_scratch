@@ -211,9 +211,93 @@ class MoeLayer(nn.Module):
 
         return output
 
+    def forward(self,tokens:torch.tensor):
+        num_tokens = tokens.size[0]
+
+        (  
+            top1_probs,
+            top1_experts,
+            aux_loss
+        ) = self.route_tokens(tokens)
+
+        metadata = self.buildMetadata(top1_experts,top1_probs)
+
+        dispatched_tokens = self.dispatch(tokens,metadata)
+
+        expert_output = self.execute_experts(dispatched_tokens,metadata)
+
+        restored_output = self.restore_output(expert_output,metadata,num_tokens)
+
+        return restored_output,aux_loss,metadata
 
 
+def main ():
 
+    torch.manual_seed(42)
+
+    config = MoEConfig()
+
+    moe = MoeLayer(config)
+
+    num_tokens = 8
+
+    tokens = torch.randn(num_tokens,2,config.hidden_state)
+
+    output,aux_loss,metadata = moe(tokens)
+
+      
+
+    print("=" * 60)
+
+    print("MoE v5")
+
+    print("=" * 60)
+
+    print("\nInput shape:")
+
+    print(tokens.shape)
+
+    print("\nSelected expert for each token:")
+
+    print(metadata.expert_indices)
+
+    print("\nAccepted tokens:")
+
+    print(metadata.accepted_mask)
+
+    print("\nOverflow tokens:")
+
+    print(metadata.overflow_mask)
+
+    print("\nSort indices:")
+
+    print(metadata.sort_indices)
+
+    print("\nSorted expert IDs:")
+
+    print(metadata.sorted_expert_ids)
+
+    print("\nUnique experts:")
+
+    print(metadata.unique_experts)
+
+    print("\nExpert counts:")
+
+    print(metadata.expert_counts)
+
+    print("\nOutput shape:")
+
+    print(output.shape)
+
+    print("\nAuxiliary loss:")
+
+    print(aux_loss.item())
+
+    print("\n" + "=" * 60)
+
+
+if (__name__ == "__main__") :
+    main()
 
 
 
