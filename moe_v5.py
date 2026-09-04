@@ -192,6 +192,28 @@ class MoeLayer(nn.Module):
 
         return output
 
+    def restore_output(self,expert_output:torch.tensor,metadata:RoutingMetadata,num_tokens:int):
+
+        output = torch.zeros(
+                    num_tokens,
+                    self.hidden_state,
+                    device=expert_output.device,
+                    dtype=expert_output.dtype
+                )
+
+        accepted_original_position = (metadata.original_positions)
+
+        output[accepted_original_position] = expert_output
+
+        accepted_routing_probs = metadata.routing_probs[metadata.sorted_indices]
+
+        output[accepted_original_position]*=accepted_routing_probs.unsqueeze(-1)
+
+        return output
+
+
+
+
 
 
 
