@@ -78,11 +78,17 @@ class MoeLayer(nn.Module):
         #From the router_probs across the tokens get the max probability and experts id for the expert for each token with top 1 
         top1_probs,top1_experts = torch.max(router_probs,dim=-1)
 
+        #Flattening the router_probs 
+        flat_router_probs = router_probs.view(-1,self.num_experts)
+
         #Get each experts probability on each expert column
-        probability_fraction = router_probs.mean(dim=0)
+        probability_fraction = flat_router_probs.mean(dim=0)
+
+        #Flattening the top1_experts
+        flat_top1_experts = top1_experts.view(-1)
 
         #Find routing fraction, token count
-        token_count = torch.bincount(router_probs,minlength=self.num_experts)
+        token_count = torch.bincount(flat_top1_experts,minlength=self.num_experts)
 
         routing_fraction  = (token_count.float()/tokens.size(0))
 
@@ -99,7 +105,7 @@ class MoeLayer(nn.Module):
 
     def buildMetadata(self,expert_indices:torch.tensor,routing_probs:torch.tensor)->RoutingMetadata:
 
-        num_tokens = expert_indices.size[0]
+        num_tokens = expert_indices.size(0)
 
         expert_capacity = int(num_tokens * self.capacity_factor)/self.num_experts
 
@@ -153,7 +159,7 @@ class MoeLayer(nn.Module):
         if sorted_expert_ids.numel() > 0 :
             unique_expert,expert_counts = torch.unique_consecutive(sorted_expert_ids,return_counts=True)
         else:
-            unique_expert = torch.empty(0,device=torch.long,device=expert_indices.device)
+            unique_expert = torch.empty(0,dtype=torch.long,device=expert_indices.device)
             expert_counts = torch.empty(0,dtype=torch.long,device=expert_indices.device)
 
         original_positions = sort_indices.clone()
@@ -163,7 +169,7 @@ class MoeLayer(nn.Module):
             routing_probs=routing_probs,
             accepted_mask=accepted_mask,
             overflow_mask=overflow_mask,
-            sorted_index=sort_indices,
+            sorted_indices=sort_indices,
             sorted_expert_ids=sorted_expert_ids,
             unique_experts=unique_expert,
             expert_counts=expert_counts,
@@ -212,7 +218,7 @@ class MoeLayer(nn.Module):
         return output
 
     def forward(self,tokens:torch.tensor):
-        num_tokens = tokens.size[0]
+        num_tokens = tokens.size(0)
 
         (  
             top1_probs,
@@ -241,7 +247,7 @@ def main ():
 
     num_tokens = 8
 
-    tokens = torch.randn(num_tokens,2,config.hidden_state)
+    tokens = torch.randn(num_tokens,config.hidden_state)
 
     output,aux_loss,metadata = moe(tokens)
 
@@ -271,7 +277,7 @@ def main ():
 
     print("\nSort indices:")
 
-    print(metadata.sort_indices)
+    print(metadata.sorted_indices)
 
     print("\nSorted expert IDs:")
 
