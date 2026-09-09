@@ -79,16 +79,22 @@ class MoeLayer(nn.Module):
         top1_probs,top1_experts = torch.max(router_probs,dim=-1)
 
         #Flattening the router_probs 
-        flat_router_probs = router_probs.view(-1,self.num_experts)
+        # flat_router_probs = router_probs.view(-1,self.num_experts)
+
+        # print(flat_router_probs)
 
         #Get each experts probability on each expert column
-        probability_fraction = flat_router_probs.mean(dim=0)
+        # probability_fraction = flat_router_probs.mean(dim=0)
+        probability_fraction = router_probs.mean(dim=0)
 
         #Flattening the top1_experts
-        flat_top1_experts = top1_experts.view(-1)
+        # flat_top1_experts = top1_experts.view(-1)
+
+        # print(flat_top1_experts)
 
         #Find routing fraction, token count
-        token_count = torch.bincount(flat_top1_experts,minlength=self.num_experts)
+        # token_count = torch.bincount(flat_top1_experts,minlength=self.num_experts)
+        token_count = torch.bincount(top1_experts,minlength=self.num_experts)
 
         routing_fraction  = (token_count.float()/tokens.size(0))
 
@@ -134,13 +140,17 @@ class MoeLayer(nn.Module):
         # It returns index of all accepted mask it inputs [True,True] => [0,1]
         # The aim of the accepted positions as since it returns index of the accepted condition using accepted mask which accumulated positions are accepted so we can use their indices from the general expert_indices to get accepted expert ids 
         # [1,2,3,4,5]
-        accepted_positions = torch.nonzero(accepted_mask,as_tuple=False).unsqueeze(-1)
+        # accepted_positions = torch.nonzero(accepted_mask,as_tuple=False).unsqueeze(-1)
+        accepted_positions = torch.nonzero(accepted_mask,as_tuple=False).squeeze(1)
+        # print(accepted_mask)
+        # print(accepted_positions)
+        # print(expert_indices)
 
         # Now we need to get using the accepted positions and that is the reason why we needed accepted_positions
         # Now we have all the accepted expert ids 
         # Let say we got this [0,0,1,2,0]
         accepted_expert_ids = expert_indices[accepted_positions]
-
+     
         # Now we need to sort by this sort it sorts using the index. Example from the accepted experts id we got [0,0,1,2,0] then => it will be [0,1,4,2,3]
         # As it takes index of the order 
         # Why we need sort order ? because it will be used to get sort indices and sorted expert id so it provide one sorting for sort indices and sorted expert id 
@@ -211,13 +221,23 @@ class MoeLayer(nn.Module):
 
         output[accepted_original_position] = expert_output
 
+        # print(accepted_original_position)
+        # print(expert_output)
+        # print(output)
+
         accepted_routing_probs = metadata.routing_probs[metadata.sorted_indices]
 
         output[accepted_original_position]*=accepted_routing_probs.unsqueeze(-1)
 
+        # print(accepted_original_position)
+        # print(accepted_routing_probs)
+
         return output
 
     def forward(self,tokens:torch.tensor):
+
+        tokens = tokens.view(-1,self.hidden_state)
+
         num_tokens = tokens.size(0)
 
         (  
@@ -298,6 +318,9 @@ def main ():
     print("\nAuxiliary loss:")
 
     print(aux_loss.item())
+
+    print("\nChecking the output")
+    print(output)
 
     print("\n" + "=" * 60)
 
