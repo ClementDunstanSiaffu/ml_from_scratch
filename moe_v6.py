@@ -103,3 +103,18 @@ class MoeLayer(nn.Module):
             top2_experts
         )
 
+    def build_metadata(self,top2_experts,top2_probs)->RouteMetadata:
+
+        if self.top_k != 2 :
+            raise ValueError("Moe v6 works for top k = 2")
+
+        if self.top_k > self.num_experts:
+            raise ValueError("The top k should not be greater than number of experts")
+
+        
+
+        return RouteMetadata(
+            top2_experts_indices=top2_experts,
+            top2_routing_probs=top2_probs
+        )
+
