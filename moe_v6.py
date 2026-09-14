@@ -86,3 +86,20 @@ class MoeLayer(nn.Module):
                 for _ in range (self.num_experts)
             ]
         )
+
+    def route_tokens(self,tokens:torch.tensor):
+
+        router_logits = self.router(tokens)
+
+        routing_probs = F.softmax(router_logits,dim=-1)
+
+        top2_experts,top2_probs = torch.topk(routing_probs,self.top_k,dim=-1)
+
+        top2_probs = (top2_probs/ top2_probs.sum(dim=-1,keepdim=True))
+
+        return (
+            routing_probs,
+            top2_probs,
+            top2_experts
+        )
+
