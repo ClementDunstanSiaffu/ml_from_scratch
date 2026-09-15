@@ -111,10 +111,58 @@ class MoeLayer(nn.Module):
         if self.top_k > self.num_experts:
             raise ValueError("The top k should not be greater than number of experts")
 
-        
+        num_tokens = top2_experts.size(0)
+
+        flat_experts_id = (top2_experts.reshape(-1).long())
+
+        flat_probs = top2_probs.reshape(-1)
+
+        flat_token_indices = (
+                                torch.arange(num_tokens,device=top2_experts.device)
+                                .unsqueeze(1)
+                                .expand(-1,self.top_k)
+                                .reshape(-1)
+                            )
+
+        num_assignments = flat_experts_id.numel()
+
+        capacity = max(
+            1,
+            int(
+                torch.ceil(
+                    torch.tensor(
+                        (num_assignments/self.num_experts)*self.capacity_factor
+                    )
+                ).item()
+            )
+
+        )
+
+        sorted_expert_ids,sort_order = torch.sort(flat_experts_id)
+
+        sorted_token_indices_all = (flat_token_indices[sort_order])
+
+        sorted_probs = flat_probs[sort_order]
+
+        accepted_mask = torch.zeros(
+                            num_assignments,
+                            dtype=torch.bool,
+                            device=flat_experts_id.device
+        )
+
+        expert_position = torch.zeros(
+                            self.num_experts,
+                            dtype=torch.long,
+                            device=flat_experts_id.device
+        )
 
         return RouteMetadata(
             top2_experts_indices=top2_experts,
-            top2_routing_probs=top2_probs
+            top2_routing_probs=top2_probs,
+            flat_expert_ids=flat_experts_id,
+            flat_probs=flat_probs,
+            capacity=capacity,
+            sorted_expert_ids=sorted_expert_ids,
+            sorted_probs=sorted_probs
         )
 
