@@ -246,3 +246,37 @@ class MoeLayer(nn.Module):
             flat_token_indices=flat_token_indices
         )
 
+
+    def dispatch(self,tokens:torch.tensor,metadata:RouteMetadata):
+
+        if metadata.sort_token_indices == 0:
+            return torch.new_empty(0,self.hidden_state)
+
+        return tokens[metadata.sort_token_indices]
+
+    def execute_experts(self,dispatched_tokens:torch.tensor,metadata:RouteMetadata):
+
+        experts_output = dispatched_tokens.new_zeros(dispatched_tokens.shape)
+
+        for expert_id in range(self.num_experts):
+
+            count = metadata.experts_count[expert_id].item()
+
+            if count == 0:
+                continue
+
+            start = metadata.experts_offset[expert_id].item()
+
+            end = start + count
+
+            ouput = self.experts[expert_id](dispatched_tokens[start:end])
+
+            experts_output[start:end] = ouput
+
+        return experts_output
+
+        
+
+
+            
+
