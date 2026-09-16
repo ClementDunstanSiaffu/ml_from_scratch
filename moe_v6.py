@@ -275,6 +275,26 @@ class MoeLayer(nn.Module):
 
         return experts_output
 
+    def restore_tokens(self,experts_output:torch.tensor,metadata:RouteMetadata,num_tokens):
+
+        output = experts_output.new_zeros((num_tokens,self.hidden_state))
+
+        if metadata.sort_token_indices == 0:
+            return output
+
+        weighted_output = (experts_output * metadata.sorted_probs.unsqueeze(-1))
+
+        output = torch.index_add(
+                    0,
+                    metadata.sort_token_indices,
+                    weighted_output
+        )
+
+        return output
+
+    # def load_balancing(self):
+
+
         
 
 
