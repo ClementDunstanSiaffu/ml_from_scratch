@@ -142,7 +142,7 @@ class MoeLayer(nn.Module):
 
         sorted_token_indices_all = (flat_token_indices[sort_order])
 
-        sorted_probs = flat_probs[sort_order]
+        sorted_probs_all = flat_probs[sort_order]
 
         accepted_mask = torch.zeros(
                             num_assignments,
@@ -156,13 +156,92 @@ class MoeLayer(nn.Module):
                             device=flat_experts_id.device
         )
 
+        accepted_mask = torch.zeros(
+                            num_assignments,
+                            dtype=torch.bool,
+                            device=flat_experts_id.device
+        )
+
+        experts_position = torch.zeros(
+                            self.num_experts,
+                            dtype=torch.long,
+                            device=flat_experts_id.device
+        )
+
+        for sorted_position in range(num_assignments):
+
+            expert_id = sorted_expert_ids[sorted_position]
+
+            actual_position = expert_position[expert_id]
+
+            if actual_position < capacity:
+                original_expert_index = sort_order[actual_position]
+                accepted_mask[original_expert_index] = True
+            experts_position[actual_position]+=1
+
+        overflow_mask = ~accepted_mask
+
+        accepted_experts_id = flat_experts_id[accepted_mask]
+
+        accepted_token_indices = flat_token_indices[accepted_mask]
+
+        accepted_route_prob = flat_probs[accepted_mask]
+
+        if accepted_experts_id.numel() > 0 :
+
+            sorted_expert_ids_accepted, sorted_expert_order = torch.sort(accepted_experts_id)
+
+            sort_token_indices_accepted = accepted_token_indices[sorted_expert_order]
+
+            sorted_probs_accepted = accepted_route_prob[sorted_expert_order]
+
+        else:
+
+            sorted_expert_ids_accepted = torch.empty(
+                                    0,
+                                    dtype=torch.long,
+                                    device=flat_experts_id.device
+            )
+
+            sort_token_indices_accepted = torch.empty(
+                                    0,
+                                    dtype=torch.long,
+                                    device=flat_token_indices.device
+
+            )
+
+            sorted_probs_accepted = torch.empty(
+                                0,
+                                dtype=torch.long,
+                                device=flat_probs.device
+            )
+
+        experts_count = torch.bincount(sorted_expert_ids_accepted,minlength=self.num_experts)
+
+        experts_offset = torch.empty(
+                            0,
+                            dtype=torch.long,
+                            device=flat_experts_id.device
+        )
+
+        if self.num_experts > 0:
+            experts_offset[1:] = torch.cumsum(
+                experts_count[:1],
+                dim=0
+            )
+
         return RouteMetadata(
             top2_experts_indices=top2_experts,
             top2_routing_probs=top2_probs,
             flat_expert_ids=flat_experts_id,
             flat_probs=flat_probs,
             capacity=capacity,
-            sorted_expert_ids=sorted_expert_ids,
-            sorted_probs=sorted_probs
+            sorted_expert_ids=sorted_expert_ids_accepted,
+            sorted_probs=sorted_probs_accepted,
+            overflow_mask=overflow_mask,
+            accepted_mask=accepted_mask,
+            sort_token_indices=sort_token_indices_accepted,
+            experts_count=experts_count,
+            experts_offset=experts_offset
         )
 
