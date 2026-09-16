@@ -242,6 +242,7 @@ class MoeLayer(nn.Module):
             accepted_mask=accepted_mask,
             sort_token_indices=sort_token_indices_accepted,
             experts_count=experts_count,
-            experts_offset=experts_offset
+            experts_offset=experts_offset,
+            flat_token_indices=flat_token_indices
         )
 
