@@ -387,6 +387,8 @@ def main():
     print(experts_ratio)
 
 
+if (__name__ == "__main__"):
+    main()
 
 
 
