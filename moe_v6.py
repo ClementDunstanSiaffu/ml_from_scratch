@@ -292,7 +292,102 @@ class MoeLayer(nn.Module):
 
         return output
 
-    # def load_balancing(self):
+    def load_balancing_loss(self,routing_probs:torch.tensor,top2_experts:torch.tensor):
+
+        ratio_probs = routing_probs.mean(dim=0)
+
+        flat_top2_experts = top2_experts.reshape(-1)
+
+        experts_counts = torch.bincount(flat_top2_experts,minlength=self.num_experts)
+
+        num_assigments = flat_top2_experts.numel()
+
+        experts_ratio = experts_counts/num_assigments
+
+        aux_loss = self.num_experts * torch.sum(ratio_probs * experts_ratio)
+
+        return (
+            aux_loss,
+            ratio_probs,
+            experts_ratio
+        )
+
+    def forward(self,tokens:torch.tensor):
+
+        if tokens.dim() != 2 :
+            raise ValueError("The Moe v6 expect token to be [T,H]")
+
+        if tokens.size(-1) != self.hidden_state:
+            raise ValueError("The last item expected to be hidden size")
+
+        num_tokens = tokens.size(0)
+
+        (
+            routing_probs,
+            top2_probs,
+            top2_experts,
+        ) = self.route_tokens(tokens)
+
+        metadata =  self.build_metadata(top2_experts=top2_experts,top2_probs=top2_probs)
+
+        dispatched_tokens = self.dispatch(tokens,metadata=metadata)
+
+        output = self.execute_experts(dispatched_tokens=dispatched_tokens,metadata=metadata)
+
+        restored_output = self.restore_tokens(output,metadata=metadata)
+
+        (
+            aux_loss,
+            ratio_probs,
+            experts_ratio
+        ) = self.load_balancing_loss(routing_probs=routing_probs,top2_experts=top2_experts)
+
+
+        return (
+            output,
+            metadata,
+            ratio_probs,
+            aux_loss,
+            experts_ratio
+        )
+
+
+
+def main():
+
+    torch.manual_seed(42)
+
+    moeConfig = MoeConfig()
+
+    moe = MoeLayer(moeConfig)
+
+    tokens = torch.randn(30,moeConfig.hidden_state)
+
+    (
+        output,
+        metadata,
+        ratio_probs,
+        aux_loss,
+        experts_ratio
+    ) = moe(tokens)
+
+    print("THE OUTPUT IS :")
+    print(output)
+
+    print("\n THE META DATA IS :")
+    print(metadata)
+
+    print("\n THE RATIO PROBS :")
+    print(ratio_probs)
+
+    print("\n THE AUX LOSS :")
+    print(aux_loss)
+
+    print("\n THE EXPERTS RATIO :")
+    print(experts_ratio)
+
+
+
 
 
         
