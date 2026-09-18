@@ -17,9 +17,10 @@ class MoeConfig:
 class SwiguExpertModel(nn.Module):
 
     def __init__(self,hidden_state,intermediate_state):
-        self.gate = nn.Linear(hidden_state,intermediate_state)
-        self.up = nn.Linear(hidden_state,intermediate_state)
-        self.down = nn.Linear(intermediate_state,hidden_state)
+        super().__init__()
+        self.gate = nn.Linear(hidden_state,intermediate_state,bias=False)
+        self.up = nn.Linear(hidden_state,intermediate_state,bias=False)
+        self.down = nn.Linear(intermediate_state,hidden_state,bias=False)
 
     def forward(self,x):
         return self.down(F.silu(self.gate(x)) * self.up(x))
@@ -56,7 +57,7 @@ class RouteMetadata:
     experts_offset:torch.tensor
 
     #This used to return to their original position (re-order)
-    original_position:torch.tensor
+    # original_position:torch.tensor
 
     capacity:int
 
@@ -250,7 +251,7 @@ class MoeLayer(nn.Module):
     def dispatch(self,tokens:torch.tensor,metadata:RouteMetadata):
 
         if metadata.sort_token_indices == 0:
-            return torch.new_empty(0,self.hidden_state)
+            return tokens.new_empty(0,self.hidden_state)
 
         return tokens[metadata.sort_token_indices]
 
