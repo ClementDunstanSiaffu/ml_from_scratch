@@ -173,12 +173,19 @@ class MoeLayer(nn.Module):
 
             expert_id = sorted_expert_ids[sorted_position]
 
+
+
             actual_position = expert_position[expert_id]
 
+
+
             if actual_position < capacity:
-                original_expert_index = sort_order[actual_position]
+                original_expert_index = sort_order[sorted_position]
                 accepted_mask[original_expert_index] = True
             experts_position[actual_position]+=1
+
+        print("ACCEPTED MASK",accepted_mask)
+
 
         overflow_mask = ~accepted_mask
 
@@ -265,6 +272,7 @@ class MoeLayer(nn.Module):
 
             if count == 0:
                 continue
+
 
             start = metadata.experts_offset[expert_id].item()
 
