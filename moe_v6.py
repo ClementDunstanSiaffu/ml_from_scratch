@@ -94,7 +94,7 @@ class MoeLayer(nn.Module):
 
         routing_probs = F.softmax(router_logits,dim=-1)
 
-        top2_experts,top2_probs = torch.topk(routing_probs,self.top_k,dim=-1)
+        top2_probs,top2_experts = torch.topk(routing_probs,self.top_k,dim=-1)
 
         top2_probs = (top2_probs/ top2_probs.sum(dim=-1,keepdim=True))
 
