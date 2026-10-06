@@ -184,7 +184,7 @@ class MoeLayer(nn.Module):
                 accepted_mask[original_expert_index] = True
             experts_position[actual_position]+=1
 
-        print("ACCEPTED MASK",accepted_mask)
+       
 
 
         overflow_mask = ~accepted_mask
@@ -226,17 +226,20 @@ class MoeLayer(nn.Module):
 
         experts_count = torch.bincount(sorted_expert_ids_accepted,minlength=self.num_experts)
 
+
         experts_offset = torch.empty(
-                            0,
+                            self.num_experts,
                             dtype=torch.long,
                             device=flat_experts_id.device
         )
 
-        if self.num_experts > 0:
+        if self.num_experts > 1:
             experts_offset[1:] = torch.cumsum(
-                experts_count[:1],
+                experts_count[:-1],
                 dim=0
             )
+            print("ACCEPTED MASK",experts_offset)
+
 
         return RouteMetadata(
             top2_experts_indices=top2_experts,
@@ -257,7 +260,7 @@ class MoeLayer(nn.Module):
 
     def dispatch(self,tokens:torch.tensor,metadata:RouteMetadata):
 
-        if metadata.sort_token_indices == 0:
+        if metadata.sort_token_indices.numel() == 0:
             return tokens.new_empty(0,self.hidden_state)
 
         return tokens[metadata.sort_token_indices]
@@ -273,7 +276,7 @@ class MoeLayer(nn.Module):
             if count == 0:
                 continue
 
-
+            
             start = metadata.experts_offset[expert_id].item()
 
             end = start + count
@@ -343,7 +346,7 @@ class MoeLayer(nn.Module):
 
         output = self.execute_experts(dispatched_tokens=dispatched_tokens,metadata=metadata)
 
-        restored_output = self.restore_tokens(output,metadata=metadata)
+        restored_output = self.restore_tokens(output,metadata=metadata,num_tokens=num_tokens)
 
         (
             aux_loss,
