@@ -291,12 +291,12 @@ class MoeLayer(nn.Module):
 
         output = experts_output.new_zeros((num_tokens,self.hidden_state))
 
-        if metadata.sort_token_indices == 0:
+        if metadata.sort_token_indices.numel() == 0:
             return output
 
         weighted_output = (experts_output * metadata.sorted_probs.unsqueeze(-1))
 
-        output = torch.index_add(
+        output = output.index_add_(
                     0,
                     metadata.sort_token_indices,
                     weighted_output
